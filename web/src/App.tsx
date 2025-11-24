@@ -5,11 +5,36 @@ function App() {
   const [status, setStatus] = useState('Disconnected')
 
   const connect = () => {
-    // Placeholder for extension connection logic
     setStatus('Connecting...')
-    setTimeout(() => {
-      setStatus('Connected (Mock)')
-    }, 1000)
+
+    // Send message to extension
+    window.postMessage({
+      webcard: 'request',
+      i: crypto.randomUUID(),
+      c: 'list_readers',
+      p: {}
+    }, window.location.origin)
+
+    // Listen for response
+    const handleResponse = (event: MessageEvent) => {
+      if (event.source !== window) return
+      if (event.data.webcard === 'response') {
+        const response = event.data
+        if (response.s === 'success') {
+          const readers = response.d as string[]
+          if (readers.length > 0) {
+            setStatus(`Connected: ${readers[0]}`)
+          } else {
+            setStatus('No readers found')
+          }
+        } else {
+          setStatus(`Error: ${response.e}`)
+        }
+        window.removeEventListener('message', handleResponse)
+      }
+    }
+
+    window.addEventListener('message', handleResponse)
   }
 
   return (
